@@ -23,23 +23,34 @@ class Player(pygame.sprite.Sprite):
         self.surf = pygame.Surface((self.width, self.height))
         self.surf.fill((0, 0, 0))
         self.rect = self.surf.get_rect()
+
         self.fb_inst = fb_inst
+
+        # units per frame
+        self.velocity = 0
         #  How many pixels to fall per frame (should take ~1 second to fall from center to bottom)
-        self.acceleration = int(60*fb_inst.velocity_const/(SCREEN_HEIGHT * 0.5)*0.1)
+        # Actually make this acceleration, not a velocity
+        self.fall_acceleration = int((SCREEN_HEIGHT * 0.5)/(60*self.fb_inst.frame_speed))*0.07
+        self.can_move = True
 
     # Move the sprite based on user keypresses
     def update(self, pressed_keys, b_network=False):
         if b_network:
             if pressed_keys['Up']:
-                self.rect.move_ip(0, -4)
-            if pressed_keys['Down']:
-                self.rect.move_ip(0, 4)
+                if self.can_move:
+                    # self.rect.move_ip(0, -4)
+                    self.velocity -= 10
+                    self.can_move = False
+            else:
+                self.can_move = True
         else:
-            buttons = [K_UP, K_DOWN]
-            if pressed_keys[buttons[0]]:
-                self.rect.move_ip(0, -4)
-            if pressed_keys[buttons[1]]:
-                self.rect.move_ip(0, 4)
+            if pressed_keys[K_UP]:
+                if self.can_move:
+                    # self.rect.move_ip(0, -4)
+                    self.velocity -= 10
+                    self.can_move = False
+            else:
+                self.can_move = True
 
     def end_conditions(self):
         if self.rect.centery <= 0:
@@ -48,13 +59,19 @@ class Player(pygame.sprite.Sprite):
         elif self.rect.centery >= SCREEN_HEIGHT:
             print('End from bottom hit')
             return True
-        # TODO case for pipe hit
+        elif pygame.sprite.spritecollideany(self, self.fb_inst.pipes):
+            return True
         return False
 
 
 class Pipe(pygame.sprite.Sprite):
     def __init__(self):
         super(Pipe, self).__init__()
+        self.width = 25
+        self.height = int(SCREEN_HEIGHT/2)
+        self.surf = pygame.Surface((self.width, self.height))
+        self.surf.fill((0, 0, 0))
+        self.rect = self.surf.get_rect()
 
 
 class FlappyBird:
@@ -64,7 +81,7 @@ class FlappyBird:
         self.screen = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
         self.clock = pygame.time.Clock()
         self.frame_count = 0
-        self.velocity_const = 100
+        self.frame_speed = 1
 
         self.player = Player(self)
 
@@ -77,6 +94,14 @@ class FlappyBird:
 
         self.player.rect.move_ip(CENTER - np.array([int(self.player.width/2), int(self.player.height/2)]))
 
+        self.pipe1 = Pipe()
+        self.pipe2 = Pipe()
+        self.pipes = pygame.sprite.Group()
+        self.pipes.add(self.pipe1)
+        self.pipes.add(self.pipe2)
+        self.pipe1.rect.move_ip(CENTER + np.array([int(SCREEN_WIDTH/4), - CENTER[1]]))
+        self.pipe2.rect.move_ip(CENTER + np.array([int(SCREEN_WIDTH/4), int(CENTER[1]/2)]))
+
         self.is_completed = False
         self.completion_state = []
 
@@ -86,9 +111,13 @@ class FlappyBird:
         """
         self.screen.fill((255, 255, 255))
 
-        # Draw borders
+        # Draw pipes
         # for wall in self.walls.values():
         #     self.screen.blit(wall.surf, wall.rect)
+        self.screen.blit(self.pipe1.surf, self.pipe1.rect)
+        self.screen.blit(self.pipe2.surf, self.pipe2.rect)
+
+
 
         # Draw the player on the screen
         self.screen.blit(self.player.surf, self.player.rect)
@@ -96,8 +125,14 @@ class FlappyBird:
         """
         Updating locations
         """
-        if self.frame_count % 10 == 0:
-            self.player.rect.move_ip(0, self.player.acceleration)
+        self.player.rect.move_ip(0, self.player.velocity)
+        self.pipe1.rect.move_ip(-2*self.frame_speed, 0)
+        self.pipe2.rect.move_ip(-2*self.frame_speed, 0)
+
+        """
+        Updating velocity
+        """
+        self.player.velocity += self.player.fall_acceleration
 
     def press_buttons(self, buttons, b_network=False):
         if b_network:
@@ -113,7 +148,7 @@ class FlappyBird:
         # Updates the display with a new frame
         pygame.display.flip()
         self.frame_count += 1
-        self.clock.tick(60*self.velocity_const)
+        self.clock.tick(60*self.frame_speed)
 
     def run_normal(self):
         running = True
