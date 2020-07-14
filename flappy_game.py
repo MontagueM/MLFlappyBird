@@ -30,7 +30,7 @@ class Player(pygame.sprite.Sprite):
         self.velocity = 0
         #  How many pixels to fall per frame (should take ~1 second to fall from center to bottom)
         # Actually make this acceleration, not a velocity
-        self.fall_acceleration = int((SCREEN_HEIGHT * 0.5)/(60*self.fb_inst.frame_speed))*0.07
+        self.fall_acceleration = int((SCREEN_HEIGHT * 0.5)/(60))*0.07
         self.can_move = True
 
     # Move the sprite based on user keypresses
@@ -81,7 +81,7 @@ class FlappyBird:
         self.screen = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
         self.clock = pygame.time.Clock()
         self.frame_count = 0
-        self.frame_speed = 1
+        self.frame_speed = 100
 
         self.player = Player(self)
 
@@ -99,11 +99,10 @@ class FlappyBird:
         self.pipes = pygame.sprite.Group()
         self.pipes.add(self.pipe1)
         self.pipes.add(self.pipe2)
-        self.pipe1.rect.move_ip(CENTER + np.array([int(SCREEN_WIDTH/4), - CENTER[1]]))
+        self.pipe1.rect.move_ip(CENTER + np.array([int(SCREEN_WIDTH/4), - CENTER[1]*1.3]))
         self.pipe2.rect.move_ip(CENTER + np.array([int(SCREEN_WIDTH/4), int(CENTER[1]/2)]))
 
         self.is_completed = False
-        self.completion_state = []
 
     def frame(self):
         """
@@ -126,8 +125,8 @@ class FlappyBird:
         Updating locations
         """
         self.player.rect.move_ip(0, self.player.velocity)
-        self.pipe1.rect.move_ip(-2*self.frame_speed, 0)
-        self.pipe2.rect.move_ip(-2*self.frame_speed, 0)
+        self.pipe1.rect.move_ip(-2, 0)
+        self.pipe2.rect.move_ip(-2, 0)
 
         """
         Updating velocity
@@ -162,10 +161,10 @@ class FlappyBird:
             self.frame()
             pressed_keys = pygame.key.get_pressed()
             self.press_buttons(pressed_keys)
-            self.update_frame()
-            b_quit = self.player.end_conditions()
-            if b_quit:
+            self.is_completed = self.player.end_conditions()
+            if self.is_completed:
                 running = False
+            self.update_frame()
         pygame.quit()
 
 
